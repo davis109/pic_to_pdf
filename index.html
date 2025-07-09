@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to PDF Converter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Image to PDF Converter</h1>
+            <p>Select images to convert them into a single PDF document</p>
+        </header>
+        
+        <div class="upload-container">
+            <div class="upload-area" id="dropArea">
+                <img src="upload-icon.svg" alt="Upload" class="upload-icon">
+                <p>Drag & drop images here or</p>
+                <label for="fileInput" class="upload-btn">Browse Files</label>
+                <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+            </div>
+        </div>
+
+        <div class="preview-container" id="previewContainer">
+            <h2>Selected Images</h2>
+            <p class="no-images-text">No images selected</p>
+            <div class="image-list" id="imageList"></div>
+        </div>
+
+        <div class="options-container">
+            <h2>PDF Options</h2>
+            <div class="option">
+                <label for="pdfName">PDF Name:</label>
+                <input type="text" id="pdfName" value="converted_document">
+            </div>
+            <div class="option">
+                <label for="pageSize">Page Size:</label>
+                <select id="pageSize">
+                    <option value="A4">A4</option>
+                    <option value="Letter">Letter</option>
+                    <option value="Legal">Legal</option>
+                </select>
+            </div>
+            <div class="option">
+                <label for="orientation">Orientation:</label>
+                <select id="orientation">
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button id="convertBtn" class="primary-btn" disabled>Convert to PDF</button>
+            <button id="clearBtn" class="secondary-btn" disabled>Clear All</button>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
