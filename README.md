@@ -1,4 +1,5 @@
 # Image to PDF Converter
+*OUTPUT PDF INSIDE THE RUNNING PROGRAM FOLDER*
 
 A web-based application that allows you to convert images to PDF with a modern, user-friendly interface. This application uses HTML, CSS, and JavaScript for the frontend, with PowerShell scripts handling the backend processing.
 
@@ -38,19 +39,4 @@ A web-based application that allows you to convert images to PDF with a modern, 
    - When finished, close the browser window
    - Press Ctrl+C in the PowerShell window to stop the server
 
-## System Requirements
 
-- Windows operating system
-- PowerShell 5.1 or higher
-- Microsoft Print to PDF feature enabled
-- Modern web browser (Chrome, Firefox, Edge, etc.)
-
-## Troubleshooting
-
-- If the application doesn't start, make sure you have the necessary permissions to run PowerShell scripts
-- If images don't convert properly, ensure they are in a supported format (JPG, PNG, GIF, etc.)
-- For any other issues, check the PowerShell window for error messages
-
-## License
-
-This project is open source and available for personal and commercial use.

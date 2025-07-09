@@ -202,11 +202,17 @@ header p {
 }
 
 #downloadBtn {
-    background-color: #3498db;
+    background-color: #2ecc71; /* Light green color */
+    display: none; /* Initially hidden, will be shown after PDF creation */
+    margin-top: 10px;
+    font-weight: bold;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 #downloadBtn:hover {
-    background-color: #2980b9;
+    background-color: #27ae60; /* Darker green on hover */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .secondary-btn {

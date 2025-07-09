@@ -244,8 +244,18 @@ convertBtn.addEventListener('click', async () => {
             // Create download link with the full path if available, otherwise just the name
             const pdfPath = result.path || pdfName;
             console.log('Using PDF path for download:', pdfPath);
-            createDownloadLink(pdfPath);
-            showStatus(`PDF created successfully. Click the download button to save ${pdfName}.pdf`, 'success');
+            
+            // Show the download button
+            const downloadBtn = document.getElementById('downloadBtn');
+            if (downloadBtn) {
+                downloadBtn.style.display = 'inline-block';
+                downloadBtn.addEventListener('click', async () => {
+                    await downloadPdf(pdfPath, pdfName);
+                });
+                showStatus(`PDF created successfully. Click the download button to save ${pdfName}.pdf`, 'success');
+            } else {
+                showStatus('Download button not found', 'error');
+            }
         } else {
             showStatus('Failed to create PDF. Please try again.', 'error');
         }
@@ -255,62 +265,56 @@ convertBtn.addEventListener('click', async () => {
     }
 });
 
-// Create a download link for the PDF
-function createDownloadLink(pdfPath) {
-    console.log('Creating download link for:', pdfPath);
-    
-    // Remove any existing download button
-    const existingBtn = document.getElementById('downloadBtn');
-    if (existingBtn) {
-        existingBtn.remove();
-        console.log('Removed existing download button');
+// Function to download the PDF
+async function downloadPdf(pdfPath, pdfName) {
+    try {
+        // Request the PDF file from the server
+        // Check if pdfPath already has .pdf extension
+        const fullPdfPath = pdfPath.toLowerCase().endsWith('.pdf') ? pdfPath : `${pdfPath}.pdf`;
+        console.log('Requesting PDF file:', fullPdfPath);
+        
+        // Get the filename from the path for the download
+        const fileName = fullPdfPath.split('\\').pop();
+        console.log('File name for download:', fileName);
+        
+        const script = `
+            $pdfPath = "${fullPdfPath}"
+            Write-Host "Looking for PDF at: $pdfPath"
+            if (Test-Path $pdfPath) {
+                Write-Host "PDF file found, reading bytes..."
+                $bytes = [System.IO.File]::ReadAllBytes($pdfPath)
+                $base64 = [Convert]::ToBase64String($bytes)
+                Write-Output $base64
+            } else {
+                Write-Error "PDF file not found: $pdfPath"
+            }
+        `;
+        
+        const base64Data = await runPowerShellScript(script);
+        console.log('Received base64 data of length:', base64Data.length);
+        
+        // Create a download link
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${base64Data}`;
+        
+        // Use the extracted filename or fallback to pdfName
+        const downloadName = fileName || `${pdfName}.pdf`;
+        link.download = downloadName;
+        console.log('Setting download filename to:', downloadName);
+        
+        // Append, click, and remove the link
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showStatus(`PDF downloaded successfully as ${downloadName}`, 'success');
+    } catch (error) {
+        console.error('Error downloading PDF:', error);
+        showStatus('Failed to download PDF', 'error');
     }
-    
-    // Create a new download button
-    const downloadBtn = document.createElement('button');
-    downloadBtn.id = 'downloadBtn';
-    downloadBtn.className = 'primary-btn';
-    downloadBtn.textContent = 'Download PDF';
-    downloadBtn.addEventListener('click', async () => {
-        try {
-            // Request the PDF file from the server
-            // Check if pdfPath already has .pdf extension
-            const fullPdfPath = pdfPath.toLowerCase().endsWith('.pdf') ? pdfPath : `${pdfPath}.pdf`;
-            console.log('Requesting PDF file:', fullPdfPath);
-            
-            const script = `
-                $pdfPath = "${fullPdfPath}"
-                Write-Host "Looking for PDF at: $pdfPath"
-                if (Test-Path $pdfPath) {
-                    $bytes = [System.IO.File]::ReadAllBytes($pdfPath)
-                    $base64 = [Convert]::ToBase64String($bytes)
-                    Write-Output $base64
-                } else {
-                    Write-Error "PDF file not found: $pdfPath"
-                }
-            `;
-            
-            const base64Data = await runPowerShellScript(script);
-            
-            // Create a download link
-            const link = document.createElement('a');
-            link.href = `data:application/pdf;base64,${base64Data}`;
-            link.download = `${pdfName}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            showStatus('PDF downloaded successfully', 'success');
-        } catch (error) {
-            console.error('Error downloading PDF:', error);
-            showStatus('Failed to download PDF', 'error');
-        }
-    });
-    
-    // Add the download button to the action buttons container
-    const actionButtons = document.querySelector('.action-buttons');
-    actionButtons.appendChild(downloadBtn);
 }
+
+
 
 // Create a temporary folder for image processing
 async function createTempFolder() {
@@ -487,8 +491,18 @@ async function convertToPdf(tempFolder, pdfName, pageSize, orientation) {
         console.log('Raw PowerShell result:', resultStr);
         
         try {
-            // Try to parse the JSON result
-            const jsonResult = JSON.parse(resultStr);
+            // Clean up the result string to ensure it's valid JSON
+            let cleanedStr = resultStr.trim();
+            // If there are multiple lines, try to find the JSON part
+            if (cleanedStr.includes('\n')) {
+                const jsonLines = cleanedStr.split('\n').filter(line => 
+                    line.trim().startsWith('{') && line.trim().endsWith('}'));
+                if (jsonLines.length > 0) {
+                    cleanedStr = jsonLines[0];
+                }
+            }
+            
+            const jsonResult = JSON.parse(cleanedStr);
             console.log('Parsed JSON result:', jsonResult);
             return jsonResult;
         } catch (parseError) {
