@@ -245,16 +245,49 @@ convertBtn.addEventListener('click', async () => {
             const pdfPath = result.path || pdfName;
             console.log('Using PDF path for download:', pdfPath);
             
-            // Show the download button
+            // Show the download and view buttons
             const downloadBtn = document.getElementById('downloadBtn');
-            if (downloadBtn) {
+            const viewPdfBtn = document.getElementById('viewPdfBtn');
+            
+            if (downloadBtn && viewPdfBtn) {
+                // Display both buttons
                 downloadBtn.style.display = 'inline-block';
-                downloadBtn.addEventListener('click', async () => {
-                    await downloadPdf(pdfPath, pdfName);
+                viewPdfBtn.style.display = 'inline-block';
+                
+                // Remove any existing event listeners by cloning the buttons
+                const newDownloadBtn = downloadBtn.cloneNode(true);
+                const newViewPdfBtn = viewPdfBtn.cloneNode(true);
+                
+                downloadBtn.parentNode.replaceChild(newDownloadBtn, downloadBtn);
+                viewPdfBtn.parentNode.replaceChild(newViewPdfBtn, viewPdfBtn);
+                
+                // Set up download button with the new reference
+                newDownloadBtn.addEventListener('click', async (e) => {
+                    e.preventDefault(); // Prevent default button behavior
+                    console.log('Download button clicked');
+                    try {
+                        await downloadPdf(pdfPath, pdfName);
+                    } catch (err) {
+                        console.error('Error in download handler:', err);
+                        showStatus('Download failed. Please try again.', 'error');
+                    }
                 });
-                showStatus(`PDF created successfully. Click the download button to save ${pdfName}.pdf`, 'success');
+                
+                // Set up view in browser button with the new reference
+                newViewPdfBtn.addEventListener('click', async (e) => {
+                    e.preventDefault(); // Prevent default button behavior
+                    console.log('View PDF button clicked');
+                    try {
+                        await viewPdfInBrowser(pdfPath, pdfName);
+                    } catch (err) {
+                        console.error('Error in view handler:', err);
+                        showStatus('Failed to view PDF. Please try downloading instead.', 'error');
+                    }
+                });
+                
+                showStatus(`PDF created successfully. You can download or view the PDF in browser.`, 'success');
             } else {
-                showStatus('Download button not found', 'error');
+                showStatus('Action buttons not found', 'error');
             }
         } else {
             showStatus('Failed to create PDF. Please try again.', 'error');
@@ -287,13 +320,18 @@ async function downloadPdf(pdfPath, pdfName) {
                 Write-Output $base64
             } else {
                 Write-Error "PDF file not found: $pdfPath"
+                exit 1
             }
         `;
         
         const base64Data = await runPowerShellScript(script);
-        console.log('Received base64 data of length:', base64Data.length);
+        console.log('Received base64 data of length:', base64Data ? base64Data.length : 0);
         
-        // Create a download link
+        if (!base64Data || base64Data.length === 0) {
+            throw new Error('No PDF data received from server');
+        }
+        
+        // Create a download link with proper attributes
         const link = document.createElement('a');
         link.href = `data:application/pdf;base64,${base64Data}`;
         
@@ -302,15 +340,114 @@ async function downloadPdf(pdfPath, pdfName) {
         link.download = downloadName;
         console.log('Setting download filename to:', downloadName);
         
-        // Append, click, and remove the link
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Make sure the link has the download attribute
+        link.setAttribute('download', downloadName);
         
-        showStatus(`PDF downloaded successfully as ${downloadName}`, 'success');
+        // Force the browser to treat this as a download
+        link.type = 'application/pdf';
+        link.target = '_blank';
+        
+        // Append link to body
+        document.body.appendChild(link);
+        
+        // Use a small timeout to ensure the browser has time to process
+        setTimeout(() => {
+            console.log('Triggering download click');
+            link.click();
+            
+            // Remove the link after a short delay
+            setTimeout(() => {
+                document.body.removeChild(link);
+                showStatus(`PDF downloaded successfully as ${downloadName}`, 'success');
+            }, 200);
+        }, 200);
     } catch (error) {
         console.error('Error downloading PDF:', error);
         showStatus('Failed to download PDF', 'error');
+    }
+}
+
+// Function to view PDF in browser
+async function viewPdfInBrowser(pdfPath, pdfName) {
+    try {
+        // Request the PDF file from the server
+        // Check if pdfPath already has .pdf extension
+        const fullPdfPath = pdfPath.toLowerCase().endsWith('.pdf') ? pdfPath : `${pdfPath}.pdf`;
+        console.log('Requesting PDF file for browser view:', fullPdfPath);
+        
+        const script = `
+            $pdfPath = "${fullPdfPath}"
+            Write-Host "Looking for PDF at: $pdfPath"
+            if (Test-Path $pdfPath) {
+                Write-Host "PDF file found, reading bytes..."
+                $bytes = [System.IO.File]::ReadAllBytes($pdfPath)
+                $base64 = [Convert]::ToBase64String($bytes)
+                Write-Output $base64
+            } else {
+                Write-Error "PDF file not found: $pdfPath"
+            }
+        `;
+        
+        const base64Data = await runPowerShellScript(script);
+        console.log('Received base64 data of length:', base64Data.length);
+        
+        if (!base64Data || base64Data.length === 0) {
+            throw new Error('No PDF data received from server');
+        }
+        
+        // Create a data URL for the PDF
+        const pdfDataUrl = `data:application/pdf;base64,${base64Data}`;
+        
+        // Create a direct download link first to ensure the browser has the PDF data
+        const link = document.createElement('a');
+        link.href = pdfDataUrl;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        
+        // Open the PDF in a new tab with proper viewer
+        const newTab = window.open('', '_blank');
+        if (newTab) {
+            newTab.document.write(`
+                <html>
+                <head>
+                    <title>${pdfName}.pdf</title>
+                    <style>
+                        body, html {
+                            margin: 0;
+                            padding: 0;
+                            height: 100%;
+                            overflow: hidden;
+                        }
+                        object {
+                            width: 100%;
+                            height: 100%;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <object data="${pdfDataUrl}" type="application/pdf" width="100%" height="100%">
+                        <p>It appears your browser doesn't support embedded PDFs. 
+                        <a href="${pdfDataUrl}" download="${pdfName}.pdf">Click here to download the PDF</a>.</p>
+                    </object>
+                </body>
+                </html>
+            `);
+            newTab.document.close();
+            
+            // Remove the temporary link
+            document.body.removeChild(link);
+            
+            showStatus(`PDF opened in a new browser tab`, 'success');
+        } else {
+            // If popup is blocked, offer direct download
+            showStatus(`Popup blocked. Please allow popups to view PDF in browser.`, 'error');
+            link.download = `${pdfName}.pdf`;
+            link.click();
+            document.body.removeChild(link);
+        }
+    } catch (error) {
+        console.error('Error viewing PDF in browser:', error);
+        showStatus('Failed to open PDF in browser', 'error');
     }
 }
 

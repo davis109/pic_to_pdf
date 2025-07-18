@@ -201,8 +201,11 @@ header p {
     cursor: not-allowed;
 }
 
+    cursor: not-allowed;
+}
+
 #downloadBtn {
-    background-color: #2ecc71; /* Light green color */
+    background-color: #3498db; /* Blue color */
     display: none; /* Initially hidden, will be shown after PDF creation */
     margin-top: 10px;
     font-weight: bold;
@@ -210,7 +213,23 @@ header p {
 }
 
 #downloadBtn:hover {
-    background-color: #27ae60; /* Darker green on hover */
+    background-color: #2980b9;
+}
+
+#viewPdfBtn {
+    background-color: #9b59b6; /* Purple color */
+    display: none; /* Initially hidden, will be shown after PDF creation */
+    margin-top: 10px;
+    font-weight: bold;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#viewPdfBtn:hover {
+    background-color: #8e44ad;
+}
+
+#downloadBtn:hover {
+    background-color: #2980b9; /* Darker blue on hover */
     transform: translateY(-2px);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
