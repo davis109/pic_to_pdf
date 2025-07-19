@@ -3,59 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image to PDF Converter</title>
+    <title>Document Converter</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Image to PDF Converter</h1>
-            <p>Select images to convert them into a single PDF document</p>
+            <h1>Document Converter</h1>
+            <p>Convert between different document formats</p>
         </header>
         
-        <div class="upload-container">
-            <div class="upload-area" id="dropArea">
-                <img src="upload-icon.svg" alt="Upload" class="upload-icon">
-                <p>Drag & drop images here or</p>
-                <label for="fileInput" class="upload-btn">Browse Files</label>
-                <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="image-to-pdf">Image to PDF</button>
+            <button class="tab-btn" data-tab="word-to-pdf">Word to PDF</button>
+            <button class="tab-btn" data-tab="pdf-to-image">PDF to Image</button>
+        </div>
+        
+        <!-- Image to PDF Tab Content -->
+        <div class="tab-content active" id="image-to-pdf-content">
+            <div class="upload-container">
+                <div class="upload-area" id="dropArea">
+                    <img src="upload-icon.svg" alt="Upload" class="upload-icon">
+                    <p>Drag & drop images here or</p>
+                    <label for="fileInput" class="upload-btn">Browse Files</label>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                </div>
+            </div>
+            
+            <div class="preview-container" id="previewContainer">
+                <h2>Selected Images</h2>
+                <p class="no-images-text">No images selected</p>
+                <div class="image-list" id="imageList"></div>
+            </div>
+            
+            <div class="options-container">
+                <h2>PDF Options</h2>
+                <div class="option">
+                    <label for="pdfName">PDF Name:</label>
+                    <input type="text" id="pdfName" value="converted_document">
+                </div>
+                <div class="option">
+                    <label for="pageSize">Page Size:</label>
+                    <select id="pageSize">
+                        <option value="A4">A4</option>
+                        <option value="Letter">Letter</option>
+                        <option value="Legal">Legal</option>
+                    </select>
+                </div>
+                <div class="option">
+                    <label for="orientation">Orientation:</label>
+                    <select id="orientation">
+                        <option value="portrait">Portrait</option>
+                        <option value="landscape">Landscape</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="downloadBtn" class="primary-btn" style="display: none; >Download PDF</button>
+                <button id="viewPdfBtn" class="primary-btn" style="display: none;">View PDF in Browser</button>
+                <button id="convertBtn" class="primary-btn" disabled>Convert to PDF</button>
+                <button id="clearBtn" class="secondary-btn" disabled>Clear All</button>
             </div>
         </div>
-
-        <div class="preview-container" id="previewContainer">
-            <h2>Selected Images</h2>
-            <p class="no-images-text">No images selected</p>
-            <div class="image-list" id="imageList"></div>
+        
+        <!-- Word to PDF Tab Content -->
+        <div class="tab-content" id="word-to-pdf-content">
+            <div class="upload-container">
+                <div class="upload-area" id="wordDropArea">
+                    <img src="upload-icon.svg" alt="Upload" class="upload-icon">
+                    <p>Drag & drop Word document here or</p>
+                    <label for="wordFileInput" class="upload-btn">Browse Files</label>
+                    <input type="file" id="wordFileInput" accept=".doc,.docx" style="display: none;">
+                </div>
+            </div>
+            
+            <div class="preview-container" id="wordPreviewContainer">
+                <h2>Selected Document</h2>
+                <p class="no-doc-text">No document selected</p>
+                <div class="doc-info" id="docInfo" style="display: none;">
+                    <div class="doc-name" id="docName"></div>
+                    <button id="removeDocBtn" class="remove-btn">❌</button>
+                </div>
+            </div>
+            
+            <div class="options-container">
+                <h2>PDF Options</h2>
+                <div class="option">
+                    <label for="wordPdfName">PDF Name:</label>
+                    <input type="text" id="wordPdfName" value="converted_document">
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="wordDownloadBtn" class="primary-btn" style="display: none;">Download PDF</button>
+                <button id="wordViewPdfBtn" class="primary-btn" style="display: none;">View PDF in Browser</button>
+                <button id="wordConvertBtn" class="primary-btn" disabled>Convert to PDF</button>
+                <button id="wordClearBtn" class="secondary-btn" disabled>Clear</button>
+            </div>
         </div>
-
-        <div class="options-container">
-            <h2>PDF Options</h2>
-            <div class="option">
-                <label for="pdfName">PDF Name:</label>
-                <input type="text" id="pdfName" value="converted_document">
+        
+        <!-- PDF to Image Tab Content -->
+        <div class="tab-content" id="pdf-to-image-content">
+            <div class="upload-container">
+                <div class="upload-area" id="pdfDropArea">
+                    <img src="upload-icon.svg" alt="Upload" class="upload-icon">
+                    <p>Drag & drop PDF document here or</p>
+                    <label for="pdfFileInput" class="upload-btn">Browse Files</label>
+                    <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;">
+                </div>
             </div>
-            <div class="option">
-                <label for="pageSize">Page Size:</label>
-                <select id="pageSize">
-                    <option value="A4">A4</option>
-                    <option value="Letter">Letter</option>
-                    <option value="Legal">Legal</option>
-                </select>
+            
+            <div class="preview-container" id="pdfPreviewContainer">
+                <h2>Selected PDF</h2>
+                <p class="no-pdf-text">No PDF selected</p>
+                <div class="pdf-info" id="pdfInfo" style="display: none;">
+                    <div class="pdf-name" id="pdfFileName"></div>
+                    <button id="removePdfBtn" class="remove-btn">❌</button>
+                </div>
             </div>
-            <div class="option">
-                <label for="orientation">Orientation:</label>
-                <select id="orientation">
-                    <option value="portrait">Portrait</option>
-                    <option value="landscape">Landscape</option>
-                </select>
+            
+            <div class="options-container">
+                <h2>Image Options</h2>
+                <div class="option">
+                    <label for="imageFormat">Image Format:</label>
+                    <select id="imageFormat">
+                        <option value="png">PNG</option>
+                        <option value="jpg">JPG</option>
+                    </select>
+                </div>
+                <div class="option">
+                    <label for="imageQuality">Image Quality:</label>
+                    <select id="imageQuality">
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <div class="option">
+                    <label for="extractPages">Extract Pages:</label>
+                    <select id="extractPages">
+                        <option value="all">All Pages</option>
+                        <option value="range">Page Range</option>
+                    </select>
+                </div>
+                <div class="option" id="pageRangeOption" style="display: none;">
+                    <label for="pageRange">Page Range:</label>
+                    <input type="text" id="pageRange" placeholder="e.g., 1-3, 5, 7-9">
+                </div>
             </div>
-        </div>
-
-        <div class="action-buttons">
-            <button id="downloadBtn" class="primary-btn" style="display: none;">Download PDF</button>
-            <button id="viewPdfBtn" class="primary-btn" style="display: none;">View PDF in Browser</button>
-            <button id="convertBtn" class="primary-btn" disabled>Convert to PDF</button>
-            <button id="clearBtn" class="secondary-btn" disabled>Clear All</button>
+            
+            <div class="action-buttons">
+                <button id="pdfConvertBtn" class="primary-btn" disabled>Convert to Images</button>
+                <button id="pdfClearBtn" class="secondary-btn" disabled>Clear</button>
+            </div>
+            
+            <div class="extracted-images" id="extractedImages" style="display: none;">
+                <h2>Extracted Images</h2>
+                <div class="image-grid" id="imageGrid"></div>
+                <button id="downloadAllBtn" class="primary-btn">Download All Images</button>
+            </div>
         </div>
 
         <div id="statusMessage" class="status-message"></div>

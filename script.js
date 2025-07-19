@@ -1,7 +1,14 @@
-// Global variables to store selected images
+// Global variables to store selected files
 let selectedImages = [];
+let selectedWordDoc = null;
+let selectedPdf = null;
 
 // DOM elements
+// Tab elements
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabContents = document.querySelectorAll('.tab-content');
+
+// Image to PDF elements
 const dropArea = document.getElementById('dropArea');
 const fileInput = document.getElementById('fileInput');
 const imageList = document.getElementById('imageList');
@@ -11,7 +18,37 @@ const clearBtn = document.getElementById('clearBtn');
 const statusMessage = document.getElementById('statusMessage');
 const pdfNameInput = document.getElementById('pdfName');
 
+// Word to PDF elements
+const wordDropArea = document.getElementById('wordDropArea');
+const wordFileInput = document.getElementById('wordFileInput');
+const docInfo = document.getElementById('docInfo');
+const docName = document.getElementById('docName');
+const noDocText = document.querySelector('.no-doc-text');
+const wordConvertBtn = document.getElementById('wordConvertBtn');
+const wordClearBtn = document.getElementById('wordClearBtn');
+const wordPdfNameInput = document.getElementById('wordPdfName');
+const wordDownloadBtn = document.getElementById('wordDownloadBtn');
+const wordViewPdfBtn = document.getElementById('wordViewPdfBtn');
+const removeDocBtn = document.getElementById('removeDocBtn');
+
+// PDF to Image elements
+const pdfDropArea = document.getElementById('pdfDropArea');
+const pdfFileInput = document.getElementById('pdfFileInput');
+const pdfInfo = document.getElementById('pdfInfo');
+const pdfFileName = document.getElementById('pdfFileName');
+const noPdfText = document.querySelector('.no-pdf-text');
+const pdfConvertBtn = document.getElementById('pdfConvertBtn');
+const pdfClearBtn = document.getElementById('pdfClearBtn');
+const extractPages = document.getElementById('extractPages');
+const pageRangeOption = document.getElementById('pageRangeOption');
+const pageRange = document.getElementById('pageRange');
+const extractedImages = document.getElementById('extractedImages');
+const imageGrid = document.getElementById('imageGrid');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const removePdfBtn = document.getElementById('removePdfBtn');
+
 // Event listeners for drag and drop functionality
+// Image to PDF drag and drop
 dropArea.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropArea.classList.add('dragover');
@@ -695,6 +732,771 @@ async function runPowerShellScript(script) {
             reject(error);
         });
     });
+}
+
+// Tab switching functionality
+tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        // Remove active class from all buttons and contents
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        tabContents.forEach(content => content.classList.remove('active'));
+        
+        // Add active class to clicked button
+        button.classList.add('active');
+        
+        // Show corresponding content
+        const tabId = button.getAttribute('data-tab');
+        document.getElementById(`${tabId}-content`).classList.add('active');
+    });
+});
+
+// Page range toggle for PDF to Image
+extractPages.addEventListener('change', () => {
+    if (extractPages.value === 'range') {
+        pageRangeOption.style.display = 'flex';
+    } else {
+        pageRangeOption.style.display = 'none';
+    }
+});
+
+// Word to PDF drag and drop functionality
+wordDropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    wordDropArea.classList.add('dragover');
+});
+
+wordDropArea.addEventListener('dragleave', () => {
+    wordDropArea.classList.remove('dragover');
+});
+
+wordDropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    wordDropArea.classList.remove('dragover');
+    
+    if (e.dataTransfer.files.length > 0) {
+        handleWordFile(e.dataTransfer.files[0]);
+    }
+});
+
+wordDropArea.addEventListener('click', () => {
+    wordFileInput.click();
+});
+
+wordFileInput.addEventListener('change', () => {
+    if (wordFileInput.files.length > 0) {
+        handleWordFile(wordFileInput.files[0]);
+    }
+});
+
+// Handle Word file selection
+function handleWordFile(file) {
+    // Check if it's a Word document
+    if (!file.name.toLowerCase().endsWith('.doc') && !file.name.toLowerCase().endsWith('.docx')) {
+        showStatus('Please select a valid Word document (.doc or .docx)', 'error');
+        return;
+    }
+    
+    // Store the selected Word document
+    selectedWordDoc = file;
+    
+    // Update the UI
+    updateWordDocPreview();
+    updateWordButtonStates();
+    
+    // Show success message
+    showStatus(`Word document "${file.name}" selected successfully`, 'success');
+}
+
+// Update the Word document preview
+function updateWordDocPreview() {
+    if (selectedWordDoc) {
+        noDocText.style.display = 'none';
+        docInfo.style.display = 'flex';
+        docName.textContent = selectedWordDoc.name;
+    } else {
+        noDocText.style.display = 'block';
+        docInfo.style.display = 'none';
+    }
+}
+
+// Update Word to PDF button states
+function updateWordButtonStates() {
+    wordConvertBtn.disabled = !selectedWordDoc;
+    wordClearBtn.disabled = !selectedWordDoc;
+}
+
+// Remove Word document
+removeDocBtn.addEventListener('click', () => {
+    selectedWordDoc = null;
+    updateWordDocPreview();
+    updateWordButtonStates();
+    wordDownloadBtn.style.display = 'none';
+    wordViewPdfBtn.style.display = 'none';
+    showStatus('Word document removed', 'info');
+});
+
+// Clear Word document
+wordClearBtn.addEventListener('click', () => {
+    selectedWordDoc = null;
+    updateWordDocPreview();
+    updateWordButtonStates();
+    wordDownloadBtn.style.display = 'none';
+    wordViewPdfBtn.style.display = 'none';
+    showStatus('Word document cleared', 'info');
+});
+
+// Convert Word to PDF
+wordConvertBtn.addEventListener('click', async () => {
+    if (!selectedWordDoc) {
+        showStatus('Please select a Word document', 'error');
+        return;
+    }
+    
+    // Show processing status
+    showStatus('Converting Word document to PDF...', 'info');
+    
+    try {
+        // Get PDF name
+        const pdfName = wordPdfNameInput.value.trim() || 'converted_document';
+        
+        // Save Word document to temporary folder
+        const tempFolder = await createTempFolder();
+        const wordFilePath = await saveWordToTemp(tempFolder, selectedWordDoc);
+        
+        // Run PowerShell script to convert Word to PDF
+        const result = await convertWordToPdf(wordFilePath, pdfName);
+        console.log('Convert Word to PDF result:', result);
+        
+        if (result.success) {
+            // Show the download and view buttons
+            wordDownloadBtn.style.display = 'inline-block';
+            wordViewPdfBtn.style.display = 'inline-block';
+            
+            // Remove any existing event listeners by cloning the buttons
+            const newDownloadBtn = wordDownloadBtn.cloneNode(true);
+            const newViewPdfBtn = wordViewPdfBtn.cloneNode(true);
+            
+            wordDownloadBtn.parentNode.replaceChild(newDownloadBtn, wordDownloadBtn);
+            wordViewPdfBtn.parentNode.replaceChild(newViewPdfBtn, wordViewPdfBtn);
+            
+            // Update references
+            wordDownloadBtn = newDownloadBtn;
+            wordViewPdfBtn = newViewPdfBtn;
+            
+            // Set up download button
+            wordDownloadBtn.addEventListener('click', async () => {
+                try {
+                    await downloadPdf(result.path, pdfName);
+                } catch (err) {
+                    console.error('Error in download handler:', err);
+                    showStatus('Download failed. Please try again.', 'error');
+                }
+            });
+            
+            // Set up view in browser button
+            wordViewPdfBtn.addEventListener('click', async () => {
+                try {
+                    await viewPdfInBrowser(result.path, pdfName);
+                } catch (err) {
+                    console.error('Error in view handler:', err);
+                    showStatus('Failed to view PDF. Please try downloading instead.', 'error');
+                }
+            });
+            
+            showStatus(`Word document converted to PDF successfully`, 'success');
+        } else {
+            showStatus('Failed to convert Word to PDF. Please try again.', 'error');
+        }
+    } catch (error) {
+        console.error('Error converting Word to PDF:', error);
+        showStatus('An error occurred while converting the Word document', 'error');
+    }
+});
+
+// Save Word document to temporary folder
+async function saveWordToTemp(tempFolder, wordFile) {
+    const reader = new FileReader();
+    
+    // Convert the file to base64
+    const base64Data = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(wordFile);
+    });
+    
+    // Use PowerShell to save the file
+    const fileName = wordFile.name;
+    const filePath = `${tempFolder}\\${fileName}`;
+    const script = `
+        $base64Data = "${base64Data}"
+        $bytes = [Convert]::FromBase64String($base64Data)
+        $filePath = "${filePath}"
+        [System.IO.File]::WriteAllBytes($filePath, $bytes)
+        Write-Output $filePath
+    `;
+    
+    try {
+        const result = await runPowerShellScript(script);
+        return result.trim();
+    } catch (error) {
+        console.error('Error saving Word file:', error);
+        throw error;
+    }
+}
+
+// Convert Word to PDF using PowerShell
+async function convertWordToPdf(wordFilePath, pdfName) {
+    // PowerShell script to convert Word to PDF using Word COM object
+    const script = `
+        try {
+            # Load Word COM object
+            $word = New-Object -ComObject Word.Application
+            $word.Visible = $false
+            
+            # Open the document
+            $wordFilePath = "${wordFilePath}"
+            $doc = $word.Documents.Open($wordFilePath)
+            
+            # Set PDF output path
+            $pdfPath = "${pdfName}.pdf"
+            
+            # Save as PDF
+            $wdFormatPDF = 17  # PDF format constant
+            $doc.SaveAs([ref]$pdfPath, [ref]$wdFormatPDF)
+            
+            # Close document and Word application
+            $doc.Close()
+            $word.Quit()
+            
+            # Release COM objects
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($doc) | Out-Null
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($word) | Out-Null
+            [System.GC]::Collect()
+            [System.GC]::WaitForPendingFinalizers()
+            
+            # Get the full path of the PDF
+            $fullPath = (Get-Item -Path $pdfPath).FullName
+            
+            # Return success with the file path
+            $result = @{
+                "success" = $true
+                "message" = "PDF created successfully"
+                "path" = $fullPath
+            } | ConvertTo-Json
+            
+            Write-Output $result
+        } catch {
+            # Return error
+            $result = @{
+                "success" = $false
+                "message" = "Error creating PDF: $_"
+            } | ConvertTo-Json
+            
+            Write-Output $result
+        }
+    `;
+    
+    try {
+        const resultStr = await runPowerShellScript(script);
+        console.log('Raw PowerShell result:', resultStr);
+        
+        try {
+            // Clean up the result string to ensure it's valid JSON
+            let cleanedStr = resultStr.trim();
+            // If there are multiple lines, try to find the JSON part
+            if (cleanedStr.includes('\n')) {
+                const jsonLines = cleanedStr.split('\n').filter(line => 
+                    line.trim().startsWith('{') && line.trim().endsWith('}'));
+                if (jsonLines.length > 0) {
+                    cleanedStr = jsonLines[0];
+                }
+            }
+            
+            const jsonResult = JSON.parse(cleanedStr);
+            console.log('Parsed JSON result:', jsonResult);
+            return jsonResult;
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            // If parsing fails, check if it contains success message
+            if (resultStr.includes("PDF created successfully")) {
+                // Extract the path if available
+                const pathMatch = resultStr.match(/"path"\s*:\s*"([^"]+)"/i);
+                const path = pathMatch ? pathMatch[1] : null;
+                
+                return { 
+                    success: true, 
+                    message: 'PDF created successfully',
+                    path: path
+                };
+            } else {
+                return { success: false, message: resultStr };
+            }
+        }
+    } catch (error) {
+        console.error('Error in PowerShell script:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+// PDF to Image drag and drop functionality
+pdfDropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    pdfDropArea.classList.add('dragover');
+});
+
+pdfDropArea.addEventListener('dragleave', () => {
+    pdfDropArea.classList.remove('dragover');
+});
+
+pdfDropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    pdfDropArea.classList.remove('dragover');
+    
+    if (e.dataTransfer.files.length > 0) {
+        handlePdfFile(e.dataTransfer.files[0]);
+    }
+});
+
+pdfDropArea.addEventListener('click', () => {
+    pdfFileInput.click();
+});
+
+pdfFileInput.addEventListener('change', () => {
+    if (pdfFileInput.files.length > 0) {
+        handlePdfFile(pdfFileInput.files[0]);
+    }
+});
+
+// Handle PDF file selection
+function handlePdfFile(file) {
+    // Check if it's a PDF document
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+        showStatus('Please select a valid PDF document', 'error');
+        return;
+    }
+    
+    // Store the selected PDF document
+    selectedPdf = file;
+    
+    // Update the UI
+    updatePdfPreview();
+    updatePdfButtonStates();
+    
+    // Show success message
+    showStatus(`PDF document "${file.name}" selected successfully`, 'success');
+}
+
+// Update the PDF preview
+function updatePdfPreview() {
+    if (selectedPdf) {
+        noPdfText.style.display = 'none';
+        pdfInfo.style.display = 'flex';
+        pdfFileName.textContent = selectedPdf.name;
+    } else {
+        noPdfText.style.display = 'block';
+        pdfInfo.style.display = 'none';
+    }
+}
+
+// Update PDF to Image button states
+function updatePdfButtonStates() {
+    pdfConvertBtn.disabled = !selectedPdf;
+    pdfClearBtn.disabled = !selectedPdf;
+}
+
+// Remove PDF document
+removePdfBtn.addEventListener('click', () => {
+    selectedPdf = null;
+    updatePdfPreview();
+    updatePdfButtonStates();
+    extractedImages.style.display = 'none';
+    showStatus('PDF document removed', 'info');
+});
+
+// Clear PDF document
+pdfClearBtn.addEventListener('click', () => {
+    selectedPdf = null;
+    updatePdfPreview();
+    updatePdfButtonStates();
+    extractedImages.style.display = 'none';
+    showStatus('PDF document cleared', 'info');
+});
+
+// Convert PDF to Images
+pdfConvertBtn.addEventListener('click', async () => {
+    if (!selectedPdf) {
+        showStatus('Please select a PDF document', 'error');
+        return;
+    }
+    
+    // Show processing status
+    showStatus('Converting PDF to images...', 'info');
+    
+    try {
+        // Get options
+        const imageFormat = document.getElementById('imageFormat').value;
+        const imageQuality = document.getElementById('imageQuality').value;
+        const extractOption = extractPages.value;
+        const pageRangeValue = pageRange.value.trim();
+        
+        // Validate page range if selected
+        if (extractOption === 'range' && !pageRangeValue) {
+            showStatus('Please enter a valid page range', 'error');
+            return;
+        }
+        
+        // Save PDF to temporary folder
+        const tempFolder = await createTempFolder();
+        const pdfFilePath = await savePdfToTemp(tempFolder, selectedPdf);
+        
+        // Run PowerShell script to convert PDF to images
+        const result = await convertPdfToImages(pdfFilePath, tempFolder, imageFormat, imageQuality, extractOption, pageRangeValue);
+        console.log('Convert PDF to Images result:', result);
+        
+        if (result.success) {
+            // Display the extracted images
+            displayExtractedImages(result.images);
+            showStatus(`PDF converted to ${result.images.length} images successfully`, 'success');
+        } else {
+            showStatus('Failed to convert PDF to images. Please try again.', 'error');
+        }
+    } catch (error) {
+        console.error('Error converting PDF to images:', error);
+        showStatus('An error occurred while converting the PDF', 'error');
+    }
+});
+
+// Save PDF to temporary folder
+async function savePdfToTemp(tempFolder, pdfFile) {
+    const reader = new FileReader();
+    
+    // Convert the file to base64
+    const base64Data = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(pdfFile);
+    });
+    
+    // Use PowerShell to save the file
+    const fileName = pdfFile.name;
+    const filePath = `${tempFolder}\\${fileName}`;
+    const script = `
+        $base64Data = "${base64Data}"
+        $bytes = [Convert]::FromBase64String($base64Data)
+        $filePath = "${filePath}"
+        [System.IO.File]::WriteAllBytes($filePath, $bytes)
+        Write-Output $filePath
+    `;
+    
+    try {
+        const result = await runPowerShellScript(script);
+        return result.trim();
+    } catch (error) {
+        console.error('Error saving PDF file:', error);
+        throw error;
+    }
+}
+
+// Convert PDF to Images using PowerShell
+async function convertPdfToImages(pdfFilePath, outputFolder, format, quality, extractOption, pageRange) {
+    // PowerShell script to convert PDF to images
+    const script = `
+        try {
+            # Add necessary assemblies
+            Add-Type -AssemblyName System.Drawing
+            Add-Type -AssemblyName System.IO
+            
+            # Load PDF processing library (using GhostScript via .NET)
+            $ghostscriptPath = "C:\\Program Files\\gs\\gs9.54.0\\bin\\gswin64c.exe"
+            
+            # Check if GhostScript is installed
+            if (-not (Test-Path $ghostscriptPath)) {
+                # Try to find GhostScript in common locations
+                $ghostscriptPath = (Get-ChildItem -Path "C:\\Program Files\\gs" -Filter "gswin64c.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+                
+                if (-not $ghostscriptPath) {
+                    throw "GhostScript not found. Please install GhostScript to convert PDF to images."
+                }
+            }
+            
+            # Define paths
+            $pdfPath = "${pdfFilePath}"
+            $outputFolder = "${outputFolder}"
+            $format = "${format}".ToLower()
+            $quality = "${quality}"
+            
+            # Set quality parameter based on selected quality
+            $qualityParam = switch ($quality) {
+                "high" { "-r300" }
+                "medium" { "-r150" }
+                "low" { "-r72" }
+                default { "-r150" }
+            }
+            
+            # Determine which pages to extract
+            $extractOption = "${extractOption}"
+            $pageRangeValue = "${pageRange}"
+            
+            $pageParam = ""
+            if ($extractOption -eq "range" -and $pageRangeValue) {
+                # Parse page range (e.g., "1-3,5,7-9")
+                $pageParam = "-dFirstPage=1 -dLastPage=1"
+                
+                # We'll handle page ranges by extracting one page at a time
+                $pageRanges = $pageRangeValue -split ','
+                $pageList = @()
+                
+                foreach ($range in $pageRanges) {
+                    if ($range -match '-') {
+                        $start, $end = $range -split '-'
+                        $start = [int]$start
+                        $end = [int]$end
+                        
+                        for ($i = $start; $i -le $end; $i++) {
+                            $pageList += $i
+                        }
+                    } else {
+                        $pageList += [int]$range
+                    }
+                }
+                
+                $pageList = $pageList | Sort-Object -Unique
+            }
+            
+            # Create output directory for images if it doesn't exist
+            $imagesFolder = Join-Path -Path $outputFolder -ChildPath "images"
+            if (-not (Test-Path $imagesFolder)) {
+                New-Item -ItemType Directory -Path $imagesFolder | Out-Null
+            }
+            
+            # List to store image paths
+            $imageFiles = @()
+            
+            if ($extractOption -eq "range" -and $pageList.Count -gt 0) {
+                # Extract specific pages
+                foreach ($pageNum in $pageList) {
+                    $outputFile = Join-Path -Path $imagesFolder -ChildPath "page_${pageNum}.${format}"
+                    
+                    # Use GhostScript to convert PDF page to image
+                    $arguments = @(
+                        "-dNOPAUSE",
+                        "-dBATCH",
+                        "-dSAFER",
+                        $qualityParam,
+                        "-dFirstPage=${pageNum}",
+                        "-dLastPage=${pageNum}",
+                        "-sDEVICE=png16m",
+                        "-sOutputFile=${outputFile}",
+                        $pdfPath
+                    )
+                    
+                    Start-Process -FilePath $ghostscriptPath -ArgumentList $arguments -Wait -NoNewWindow
+                    
+                    if (Test-Path $outputFile) {
+                        $imageFiles += @{
+                            "path" = $outputFile
+                            "page" = $pageNum
+                            "base64" = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($outputFile))
+                        }
+                    }
+                }
+            } else {
+                # Extract all pages
+                $outputPattern = Join-Path -Path $imagesFolder -ChildPath "page_%03d.${format}"
+                
+                # Use GhostScript to convert all PDF pages to images
+                $arguments = @(
+                    "-dNOPAUSE",
+                    "-dBATCH",
+                    "-dSAFER",
+                    $qualityParam,
+                    "-sDEVICE=png16m",
+                    "-sOutputFile=${outputPattern}",
+                    $pdfPath
+                )
+                
+                Start-Process -FilePath $ghostscriptPath -ArgumentList $arguments -Wait -NoNewWindow
+                
+                # Get all generated image files
+                $generatedImages = Get-ChildItem -Path $imagesFolder -Filter "page_*.${format}" | Sort-Object Name
+                
+                foreach ($img in $generatedImages) {
+                    # Extract page number from filename (page_001.png -> 1)
+                    $pageNum = [int]($img.BaseName -replace 'page_', '' -replace '^0+', '')
+                    if ($pageNum -eq 0) { $pageNum = 1 } # Handle case where all zeros were removed
+                    
+                    $imageFiles += @{
+                        "path" = $img.FullName
+                        "page" = $pageNum
+                        "base64" = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($img.FullName))
+                    }
+                }
+            }
+            
+            # Return success with the image files
+            $result = @{
+                "success" = $true
+                "message" = "PDF converted to images successfully"
+                "images" = $imageFiles
+            } | ConvertTo-Json -Depth 5
+            
+            Write-Output $result
+        } catch {
+            # Return error
+            $result = @{
+                "success" = $false
+                "message" = "Error converting PDF to images: $_"
+            } | ConvertTo-Json
+            
+            Write-Output $result
+        }
+    `;
+    
+    try {
+        const resultStr = await runPowerShellScript(script);
+        console.log('Raw PowerShell result length:', resultStr.length);
+        
+        try {
+            // Clean up the result string to ensure it's valid JSON
+            let cleanedStr = resultStr.trim();
+            // If there are multiple lines, try to find the JSON part
+            if (cleanedStr.includes('\n')) {
+                const jsonStart = cleanedStr.indexOf('{');
+                const jsonEnd = cleanedStr.lastIndexOf('}') + 1;
+                if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                    cleanedStr = cleanedStr.substring(jsonStart, jsonEnd);
+                }
+            }
+            
+            const jsonResult = JSON.parse(cleanedStr);
+            console.log('Parsed JSON result:', jsonResult);
+            return jsonResult;
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            return { success: false, message: 'Failed to parse conversion result' };
+        }
+    } catch (error) {
+        console.error('Error in PowerShell script:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+// Display extracted images in the UI
+function displayExtractedImages(images) {
+    // Clear previous images
+    imageGrid.innerHTML = '';
+    
+    // Sort images by page number
+    images.sort((a, b) => a.page - b.page);
+    
+    // Create image elements
+    images.forEach(image => {
+        const imageItem = document.createElement('div');
+        imageItem.className = 'image-grid-item';
+        
+        // Create image element
+        const img = document.createElement('img');
+        img.src = `data:image/${image.path.split('.').pop()};base64,${image.base64}`;
+        img.alt = `Page ${image.page}`;
+        
+        // Create image actions
+        const actions = document.createElement('div');
+        actions.className = 'image-actions';
+        
+        // Page number
+        const pageNum = document.createElement('span');
+        pageNum.textContent = `Page ${image.page}`;
+        
+        // Download button
+        const downloadBtn = document.createElement('button');
+        downloadBtn.textContent = 'Download';
+        downloadBtn.addEventListener('click', () => {
+            downloadImage(image);
+        });
+        
+        // Add elements to the DOM
+        actions.appendChild(pageNum);
+        actions.appendChild(downloadBtn);
+        
+        imageItem.appendChild(img);
+        imageItem.appendChild(actions);
+        imageGrid.appendChild(imageItem);
+    });
+    
+    // Show the extracted images section
+    extractedImages.style.display = 'block';
+    
+    // Set up download all button
+    downloadAllBtn.onclick = () => {
+        downloadAllImages(images);
+    };
+}
+
+// Download a single image
+function downloadImage(image) {
+    const link = document.createElement('a');
+    link.href = `data:image/${image.path.split('.').pop()};base64,${image.base64}`;
+    link.download = `page_${image.page}.${image.path.split('.').pop()}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Download all images as a ZIP file
+async function downloadAllImages(images) {
+    showStatus('Preparing images for download...', 'info');
+    
+    try {
+        // Create a temporary folder to store the images
+        const tempFolder = await createTempFolder();
+        
+        // Save all images to the temp folder
+        for (const image of images) {
+            const script = `
+                $base64Data = "${image.base64}"
+                $bytes = [Convert]::FromBase64String($base64Data)
+                $filePath = Join-Path -Path "${tempFolder}" -ChildPath "page_${image.page}.${image.path.split('.').pop()}"
+                [System.IO.File]::WriteAllBytes($filePath, $bytes)
+                Write-Output $filePath
+            `;
+            
+            await runPowerShellScript(script);
+        }
+        
+        // Create a ZIP file containing all images
+        const zipScript = `
+            $tempFolder = "${tempFolder}"
+            $zipPath = "${tempFolder}_images.zip"
+            
+            # Create ZIP file
+            Compress-Archive -Path "${tempFolder}\\*" -DestinationPath $zipPath -Force
+            
+            # Read ZIP file as base64
+            $bytes = [System.IO.File]::ReadAllBytes($zipPath)
+            $base64 = [Convert]::ToBase64String($bytes)
+            
+            # Clean up
+            Remove-Item -Path $tempFolder -Recurse -Force
+            Remove-Item -Path $zipPath -Force
+            
+            Write-Output $base64
+        `;
+        
+        const base64Zip = await runPowerShellScript(zipScript);
+        
+        // Create download link for the ZIP file
+        const link = document.createElement('a');
+        link.href = `data:application/zip;base64,${base64Zip}`;
+        link.download = 'extracted_images.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showStatus('All images downloaded as ZIP file', 'success');
+    } catch (error) {
+        console.error('Error downloading all images:', error);
+        showStatus('Failed to download images', 'error');
+    }
 }
 
 // Initialize the UI
